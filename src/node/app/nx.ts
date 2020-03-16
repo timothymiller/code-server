@@ -277,6 +277,8 @@ export class NXAgent {
       `listen=${this.port}`,
       `state=${this.statefilePath}`,
       "client=linux",
+      "keyconv=off",
+      "keyboard=qwerty",
     ]
 
     if (this.options.mode === "shadow") {
