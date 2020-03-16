@@ -58,13 +58,13 @@ const main = async (args: Args): Promise<void> => {
   }
 
   const httpServer = new HttpServer(options)
-  const vscode = httpServer.registerHttpProvider("/", VscodeHttpProvider, args)
+  const vscode = httpServer.registerHttpProvider("/vscode", VscodeHttpProvider, args)
   const api = httpServer.registerHttpProvider("/api", ApiHttpProvider, httpServer, vscode, args["user-data-dir"])
   const update = httpServer.registerHttpProvider("/update", UpdateHttpProvider, !args["disable-updates"])
   httpServer.registerHttpProvider("/proxy", ProxyHttpProvider)
   httpServer.registerHttpProvider("/login", LoginHttpProvider)
   httpServer.registerHttpProvider("/static", StaticHttpProvider)
-  httpServer.registerHttpProvider("/dashboard", DashboardHttpProvider, api, update)
+  httpServer.registerHttpProvider("/", DashboardHttpProvider, api, update)
 
   ipcMain().onDispose(() => httpServer.dispose())
 

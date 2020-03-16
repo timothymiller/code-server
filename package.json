@@ -1,9 +1,10 @@
 {
   "name": "code-server",
   "license": "MIT",
-  "version": "3.0.2",
+  "version": "4.0.0",
   "scripts": {
     "clean": "ci/clean.sh",
+    "postinstall": "chmod +x ./node_modules/@coder/x11wasm/out/nxagent",
     "vscode": "ci/vscode.sh",
     "vscode:patch": "cd ./lib/vscode && git apply ../../ci/vscode.patch",
     "vscode:diff": "cd ./lib/vscode && git diff HEAD > ../../ci/vscode.patch",
@@ -24,6 +25,7 @@
     "@types/pem": "^1.9.5",
     "@types/safe-compare": "^1.1.0",
     "@types/semver": "^7.1.0",
+    "@types/sharedworker": "^0.0.29",
     "@types/tar-fs": "^1.16.2",
     "@types/ssh2": "0.5.39",
     "@types/ssh2-streams": "^0.1.6",
@@ -51,6 +53,7 @@
   },
   "dependencies": {
     "@coder/logger": "1.1.11",
+    "@coder/x11wasm": "0.3.5",
     "adm-zip": "^0.4.14",
     "fs-extra": "^8.1.0",
     "http-proxy": "^1.18.0",

@@ -18,6 +18,7 @@ import {
 import { ApiEndpoint, HttpCode, HttpError } from "../../common/http"
 import { HttpProvider, HttpProviderOptions, HttpResponse, HttpServer, Route } from "../http"
 import { findApplications, findWhitelistedApplications, Vscode } from "./bin"
+import { NXSession } from "./nx"
 import { VscodeHttpProvider } from "./vscode"
 
 interface VsRecents {
@@ -31,6 +32,12 @@ type VsSettings = [string, string][]
  */
 export class ApiHttpProvider extends HttpProvider {
   private readonly ws = new WebSocket.Server({ noServer: true })
+  private nx?: NXSession
+
+  private readonly retryBaseDelay = 1000
+  private readonly retryMaxDelay = 10000
+  private retryDelay?: number
+  private readonly retryDelayFactor = 1.5
 
   public constructor(
     options: HttpProviderOptions,
@@ -39,6 +46,37 @@ export class ApiHttpProvider extends HttpProvider {
     private readonly dataDir?: string,
   ) {
     super(options)
+    this.createNxSession()
+  }
+
+  private createNxSession(): void {
+    this.nx = new NXSession()
+    this.nx.onExit(() => this.dispose())
+    this.nx.onExit(() => {
+      logger.debug("nxagent exited; respawning")
+      if (typeof this.retryDelay === "undefined") {
+        this.retryDelay = 0
+      } else {
+        this.retryDelay = this.retryDelay * this.retryDelayFactor || this.retryBaseDelay
+        if (this.retryDelay > this.retryMaxDelay) {
+          this.retryDelay = this.retryMaxDelay
+        }
+      }
+      this.nx = undefined
+      setTimeout(() => this.createNxSession(), this.retryDelay)
+    })
+    this.nx
+      .prepare()
+      .then(() => {
+        this.retryDelay = undefined
+      })
+      .catch((error) => logger.error(error.message))
+  }
+
+  public dispose(): void {
+    if (this.nx) {
+      this.nx.dispose()
+    }
   }
 
   public async handleRequest(route: Route, request: http.IncomingMessage): Promise<HttpResponse> {
@@ -137,7 +175,18 @@ export class ApiHttpProvider extends HttpProvider {
           reject(error)
         })
 
-        resolve(socket as WebSocket)
+        if (!this.nx) {
+          throw new Error("no nxagent")
+        }
+
+        this.nx
+          .accept(socket as WebSocket)
+          .then(() => resolve(socket as WebSocket))
+          .catch((error) => {
+            socket.close(SessionError.FailedToStart)
+            logger.error("got error while accepting socket", field("error", error))
+            reject(error)
+          })
       })
     })
 
@@ -147,7 +196,7 @@ export class ApiHttpProvider extends HttpProvider {
     ws.send(
       Buffer.from(
         JSON.stringify({
-          protocol: "TODO",
+          protocol: "nx",
         }),
       ),
     )
@@ -231,17 +280,26 @@ export class ApiHttpProvider extends HttpProvider {
    * Spawn a process and return the pid.
    */
   public async spawnProcess(exec: string): Promise<number> {
+    if (!this.nx) {
+      throw new Error("no nxagent")
+    }
+
+    await this.nx.prepare()
+
     const proc = cp.spawn(exec, {
       shell: process.env.SHELL || true,
       env: {
         ...process.env,
+        DISPLAY: `:${this.nx.rootDisplay}`,
       },
     })
+
+    this.nx.onExit(() => proc.kill())
 
     proc.on("error", (error) => logger.error("process errored", field("pid", proc.pid), field("error", error)))
     proc.on("exit", () => logger.debug("process exited", field("pid", proc.pid)))
 
-    logger.debug("started process", field("pid", proc.pid))
+    logger.debug("started process", field("pid", proc.pid), field("display", this.nx.rootDisplay))
 
     return proc.pid
   }

@@ -759,6 +759,11 @@
   resolved "https://registry.yarnpkg.com/@coder/logger/-/logger-1.1.11.tgz#e6f36dba9436ae61e66e3f66787d75c768617605"
   integrity sha512-EEh1dqSU0AaqjjjMsVqumgZGbrZimKFKIb4t5E6o3FLfVUxJCReSME78Yj2N1xWUVAHMnqafDCxLostpuIotzw==
 
+"@coder/x11wasm@0.3.5":
+  version "0.3.5"
+  resolved "https://registry.yarnpkg.com/@coder/x11wasm/-/x11wasm-0.3.5.tgz#e331c09d7156c23d001a62eab63d84d3c2dd516a"
+  integrity sha512-B+k/25Ut9miDr09rANejx9jB/vYXE9+xOfv++fvLX5DJ5vAL5wR1VvY3mgn128oEXlIZ/sAZJBoUauujO/zZiw==
+
 "@iarna/toml@^2.2.0":
   version "2.2.3"
   resolved "https://registry.yarnpkg.com/@iarna/toml/-/toml-2.2.3.tgz#f060bf6eaafae4d56a7dac618980838b0696e2ab"
@@ -943,6 +948,11 @@
   integrity sha512-pOKLaubrAEMUItGNpgwl0HMFPrSAFic8oSVIvfu1UwcgGNmNyK9gyhBHKmBnUTwwVvpZfkzUC0GaMgnL6P86uA==
   dependencies:
     "@types/node" "*"
+
+"@types/sharedworker@^0.0.29":
+  version "0.0.29"
+  resolved "https://registry.yarnpkg.com/@types/sharedworker/-/sharedworker-0.0.29.tgz#69ce70764a0380f4c27ae036f6f9c4e2c75dbdac"
+  integrity sha512-vdlrZJKGrAedfcMt4Tn8gIa3tJxRhrTtwfEu9jmVtaCZHgbensRMEbpkZ+dY/6WpE12a8K00KaQnJV0lH9ZmdA==
 
 "@types/ssh2-streams@*", "@types/ssh2-streams@^0.1.6":
   version "0.1.6"
