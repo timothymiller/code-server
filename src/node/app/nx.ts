@@ -14,7 +14,10 @@ const findAvailableDisplay = async (): Promise<number> => {
   const x11unixDir = path.join(os.tmpdir(), ".X11-unix")
   // Skip existing displays. We can't connect to them to see if they're in use
   // because doing so will crash the nxagent listening on that socket.
-  while (await fs.pathExists(path.join(x11unixDir, `X${display}`))) {
+  while (
+    (await fs.pathExists(path.join(x11unixDir, `X${display}`))) &&
+    (await fs.pathExists(path.join(os.tmpdir(), `.X${display}-lock`)))
+  ) {
     logger.debug("display is taken", field("display", display))
     ++display
   }

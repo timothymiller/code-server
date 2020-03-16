@@ -147,6 +147,13 @@ export const findWhitelistedApplications = async (): Promise<ReadonlyArray<Appli
       version: app.version,
       // If there's no exec, it's a browser app that is already "installed".
       installed: !app.exec,
+      icon: app.icon,
+    }
+
+    const iconPath = path.join(__dirname, "..", "..", "..", "src", "node", "app", "icons", `${app.exec}.svg`)
+    if (await fs.pathExists(iconPath)) {
+      const icon = await fs.readFile(iconPath)
+      details.icon = icon.toString("base64")
     }
 
     if (!details.installed) {
@@ -161,7 +168,35 @@ export const findWhitelistedApplications = async (): Promise<ReadonlyArray<Appli
     if (!details.version && details.installed) {
       try {
         switch (app.exec) {
+          case "clion":
+          case "datagrip":
           case "goland":
+          case "intellij-idea-community":
+          case "intellij-idea-ultimate":
+          case "phpstorm":
+          case "pycharm":
+          case "rider":
+          case "rubymine":
+          case "webstorm": {
+            const result = await util.promisify(cp.exec)(`which ${app.exec}`, {
+              shell: process.env.SHELL,
+            })
+            const linkPath = await fs.realpath(result.stdout.toString().trim())
+            let basePath: string
+            if (path.extname(linkPath) === "sh") {
+              // We found the script!
+              basePath = path.join(linkPath, "..", "..")
+            } else {
+              basePath = path.join(path.sep, "snap", app.exec, "current")
+            }
+            const productInfoPath = path.join(basePath, "product-info.json")
+            if (!(await fs.pathExists(productInfoPath))) {
+              break
+            }
+            const productInfo = JSON.parse((await fs.readFile(productInfoPath)).toString())
+            details.version = productInfo.version
+            break
+          }
           case "eclipse":
           case "jupyter":
             throw new Error("TODO: get version")
@@ -188,10 +223,22 @@ export const findWhitelistedApplications = async (): Promise<ReadonlyArray<Appli
 
   const apps: ReadonlyArray<Application> = [
     Vscode,
+
+    // JetBrains editors
+    { name: "CLion", exec: "clion" },
+    { name: "Datagrip", exec: "datagrip" },
     { name: "GoLand", exec: "goland" },
+    { name: "IntelliJ IDEA Ultimate", exec: "intellij-idea-ultimate" },
+    { name: "IntelliJ IDEA Community", exec: "intellij-idea-community" },
+    { name: "PhpStorm", exec: "phpstorm" },
+    { name: "PyCharm", exec: "pycharm" },
+    { name: "Rider", exec: "rider" },
+    { name: "RubyMine", exec: "rubymine" },
+
+    // Extras
     { name: "Eclipse", exec: "eclipse" },
-    { name: "Jupyter", exec: "jupyter" },
-    { name: "Vim", exec: "vim" },
+    { name: "Oni", exec: "Oni" },
+    { name: "MonoDevelop", exec: "monodevelop" },
     { name: "Emacs", exec: "emacs" },
   ]
 
