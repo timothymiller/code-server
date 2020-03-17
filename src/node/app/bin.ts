@@ -15,7 +15,9 @@ const getVscodeVersion = (): string => {
 
 export const Vscode: Application = {
   categories: ["Editor"],
-  icon: fs.readFileSync(path.resolve(__dirname, "../../../lib/vscode/resources/linux/code.png")).toString("base64"),
+  icon: `data:image/png;base64,${fs
+    .readFileSync(path.resolve(__dirname, "../../../lib/vscode/resources/linux/code.png"))
+    .toString("base64")}`,
   installed: true,
   name: "VS Code",
   path: "/vscode",
@@ -109,7 +111,7 @@ export const findApplications = async (): Promise<ReadonlyArray<Application>> =>
           exists = await fs.pathExists(iconPath)
         }
         if (exists) {
-          icon = (await fs.readFile(iconPath)).toString("base64")
+          icon = `data:image/png;base64,${(await fs.readFile(iconPath)).toString("base64")}`
         }
       }
 
@@ -153,7 +155,7 @@ export const findWhitelistedApplications = async (): Promise<ReadonlyArray<Appli
     const iconPath = path.join(__dirname, "..", "..", "..", "src", "node", "app", "icons", `${app.exec}.svg`)
     if (await fs.pathExists(iconPath)) {
       const icon = await fs.readFile(iconPath)
-      details.icon = icon.toString("base64")
+      details.icon = `data:image/svg+xml;base64,${icon.toString("base64")}`
     }
 
     if (!details.installed) {

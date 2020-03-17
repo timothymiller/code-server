@@ -93,11 +93,7 @@ export class DashboardHttpProvider extends HttpProvider {
       <button class="item -row -link">
         <input type="hidden" name="path" value="${app.path || ""}">
         <input type="hidden" name="exec" value="${app.exec || ""}">
-        ${
-          app.icon
-            ? `<img class="icon" src="data:image/png;base64,${app.icon}"></img>`
-            : `<span class="icon -missing"></span>`
-        }
+        ${app.icon ? `<img class="icon" src="${app.icon}"></img>` : `<span class="icon -missing"></span>`}
         <span class="name">${app.name}</span>
       </button>
     </form>`
