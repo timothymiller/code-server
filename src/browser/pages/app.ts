@@ -1,4 +1,5 @@
 import { field, logger } from "@coder/logger"
+import { Event } from "../../common/api"
 import { ApiEndpoint } from "../../common/http"
 import { getOptions, normalize } from "../../common/util"
 import { Window } from "./window"
@@ -46,7 +47,7 @@ if (typeof document !== "undefined") {
   new Window(worker, options.commit === "development")
   bindForm()
   // TEMP: Until we can get the real ready event.
-  const event = new CustomEvent("ide-ready")
+  const event = new CustomEvent(Event.IdeReady)
   window.dispatchEvent(event)
 } else {
   const worker = new Worker()

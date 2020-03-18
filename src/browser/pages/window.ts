@@ -1,4 +1,5 @@
 import * as x11wasm from "@coder/x11wasm"
+import { Event } from "../../common/api"
 import { normalize } from "../../common/util"
 
 class FPS {
@@ -28,7 +29,10 @@ export class Window {
       const url = new URL(location.href)
       url.searchParams.set("wid", `${w.wid}`)
       url.pathname = normalize(url.pathname + "/app/", true)
-      window.open(url.toString(), "", `innerWidth=${w.width},innerHeight=${w.height}`)
+      if (!window.open(url.toString(), "", `innerWidth=${w.width},innerHeight=${w.height}`)) {
+        const event = new CustomEvent(Event.WindowLoadFail)
+        window.dispatchEvent(event)
+      }
     })
     window.addEventListener("beforeunload", () => {
       if (this.w) {

@@ -22,6 +22,11 @@ export interface ApplicationsResponse {
   readonly applications: ReadonlyArray<Application>
 }
 
+export enum Event {
+  IdeReady = "ide-ready",
+  WindowLoadFail = "window-load-fail",
+}
+
 export enum SessionError {
   FailedToStart = 4000,
   Starting = 4001,
