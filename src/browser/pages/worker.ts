@@ -44,12 +44,19 @@ export class Worker {
       const start = time(500)
       logger.debug("creating client...")
 
-      // Wait for the first message from the server.
+      // Wait for the ready message from the server.
       const acceptMsg = await new Promise<ReadyMessage>((resolve) => {
         const disposable = socket.onMessage(async (message) => {
           disposable.dispose()
-          logger.debug("server reports it is ready")
-          resolve(JSON.parse(decode(message)))
+          try {
+            const decoded = JSON.parse(decode(message))
+            if (decoded.protocol) {
+              logger.debug("server reports it is ready", field("message", decoded))
+              resolve(decoded)
+            }
+          } catch (error) {
+            // Not the ready message.
+          }
         })
       })
 

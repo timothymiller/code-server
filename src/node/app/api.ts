@@ -156,7 +156,7 @@ export class ApiHttpProvider extends HttpProvider {
   }
 
   /**
-   * A socket that connects to the process.
+   * A socket that connects to the nxagent.
    */
   private async handleRunSocket(
     _route: Route,
@@ -164,7 +164,7 @@ export class ApiHttpProvider extends HttpProvider {
     socket: net.Socket,
     head: Buffer,
   ): Promise<void> {
-    logger.debug("connecting to process")
+    logger.debug("connecting to nxagent")
     const ws = await new Promise<WebSocket>((resolve, reject) => {
       this.ws.handleUpgrade(request, socket, head, (socket) => {
         socket.binaryType = "arraybuffer"
@@ -190,7 +190,7 @@ export class ApiHttpProvider extends HttpProvider {
       })
     })
 
-    logger.debug("connected to process")
+    logger.debug("connected to nxagent")
 
     // Send ready message.
     ws.send(

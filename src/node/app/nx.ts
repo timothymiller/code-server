@@ -107,7 +107,7 @@ export class NXAgent {
   }
 
   /**
-   * Resolves if the NXProxy is started.
+   * Resolves if the nxagent is started.
    */
   public get started(): Promise<void> {
     return this._started
@@ -218,14 +218,14 @@ export class NXAgent {
     )
 
     logger.debug(
-      "spawned nxproxy",
+      "spawned nxagent",
       field("pid", this._process.pid),
       field("options", this.options),
       field("display", this.display),
     )
 
     if (logger.level <= Level.Trace && this._process.stdout && this._process.stderr) {
-      logger.trace("forwarding nxproxy stdio")
+      logger.trace("forwarding nxagent stdio")
       this._process.stdout.on("data", (data) => process.stdout.write(data))
       this._process.stderr.on("data", (data) => process.stderr.write(data))
     }
@@ -241,8 +241,8 @@ export class NXAgent {
     } catch (error) {
       this.process.kill()
       throw typeof error === "number"
-        ? new Error(`nxagent terminated unexpectedly with code ${error}`)
-        : error || new Error("nxagent terminated unexpectedly")
+        ? new Error(`nxagent terminated unexpectedly with code ${error} (display ${this.display})`)
+        : error || new Error(`nxagent terminated unexpectedly (display ${this.display})`)
     }
 
     this.process.on("exit", (code) => {
@@ -278,7 +278,7 @@ export class NXAgent {
       `state=${this.statefilePath}`,
       "client=linux",
       "keyconv=off",
-      "keyboard=qwerty",
+      "keyboard=query",
     ]
 
     if (this.options.mode === "shadow") {
