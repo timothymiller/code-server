@@ -236,6 +236,7 @@ export const findWhitelistedApplications = async (): Promise<ReadonlyArray<Appli
     { name: "PyCharm", exec: "pycharm" },
     { name: "Rider", exec: "rider" },
     { name: "RubyMine", exec: "rubymine" },
+    { name: "WebStorm", exec: "webstorm" },
 
     // Extras
     { name: "Eclipse", exec: "eclipse" },
