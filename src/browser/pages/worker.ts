@@ -1,6 +1,6 @@
 import { field, logger, time } from "@coder/logger"
 import * as x11wasm from "@coder/x11wasm"
-import { ReadyMessage, SessionError } from "../../common/api"
+import { ReadyMessage } from "../../common/api"
 import { ApiEndpoint } from "../../common/http"
 import { normalize } from "../../common/util"
 import { decode, ReconnectingSocket } from "../socket"
@@ -94,22 +94,11 @@ export class Worker {
         this.client.close()
         this.client = undefined
       }
-
-      // These are permanent failures.
-      switch (code) {
-        case SessionError.FailedToStart:
-          socket.close(code)
-          break
-      }
     })
 
     // The close event is permanent so dispose everything.
     socket.onClose((code) => {
       logger.debug("got closed")
-      switch (code) {
-        case SessionError.FailedToStart:
-          return this.dispose(new Error("session failed to start"))
-      }
       this.dispose(new Error(`socket closed with code ${code}`))
     })
 

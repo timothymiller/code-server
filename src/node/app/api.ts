@@ -53,7 +53,7 @@ export class ApiHttpProvider extends HttpProvider {
     this.nx = new NXSession()
     this.nx.onExit(() => this.dispose())
     this.nx.onExit(() => {
-      logger.debug("nxagent exited; respawning")
+      logger.debug("nxagent exited; respawning", field("id", this.nx && this.nx.id))
       if (typeof this.retryDelay === "undefined") {
         this.retryDelay = 0
       } else {
@@ -164,7 +164,7 @@ export class ApiHttpProvider extends HttpProvider {
     socket: net.Socket,
     head: Buffer,
   ): Promise<void> {
-    logger.debug("connecting to nxagent")
+    logger.debug("connecting to nxagent", field("id", this.nx && this.nx.id))
     const ws = await new Promise<WebSocket>((resolve, reject) => {
       this.ws.handleUpgrade(request, socket, head, (socket) => {
         socket.binaryType = "arraybuffer"
@@ -190,7 +190,7 @@ export class ApiHttpProvider extends HttpProvider {
       })
     })
 
-    logger.debug("connected to nxagent")
+    logger.debug("connected to nxagent", field("id", this.nx && this.nx.id))
 
     // Send ready message.
     ws.send(

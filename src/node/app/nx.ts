@@ -7,6 +7,7 @@ import * as path from "path"
 import * as WebSocket from "ws"
 import { SessionError } from "../../common/api"
 import { Emitter } from "../../common/emitter"
+import { generateUuid } from "../../common/util"
 
 const findAvailableDisplay = async (): Promise<number> => {
   logger.debug("finding available display")
@@ -271,14 +272,15 @@ export class NXAgent {
       "nx/nx",
       "link=adsl",
       "pack=2m-png",
-      "cache=128M",
-      "images=128M",
+      "cache=256M",
+      "images=256M",
       "accept=localhost",
       `listen=${this.port}`,
       `state=${this.statefilePath}`,
       "client=linux",
       "keyconv=off",
       "keyboard=query",
+      "menu=0",
     ]
 
     if (this.options.mode === "shadow") {
@@ -323,6 +325,8 @@ export class NXSession {
   private readonly shadows: NXAgent[] = []
   protected readonly _onExit = new Emitter<void>()
   public readonly onExit = this._onExit.event
+
+  public readonly id = generateUuid()
 
   public async accept(ws: WebSocket): Promise<void> {
     await this.prepare()
