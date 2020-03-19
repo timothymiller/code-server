@@ -23,12 +23,12 @@ export class Window {
   private xs: x11wasm.XServer
   private w?: x11wasm.Window
 
-  constructor(private readonly worker: SharedWorker.SharedWorker, private readonly showFps: boolean) {
+  constructor(private readonly worker: SharedWorker.SharedWorker, private readonly showFps: boolean, base: string) {
     this.xs = x11wasm.dialWorker(this.worker.port)
     this.xs.on("window", (w) => {
       const url = new URL(location.href)
       url.searchParams.set("wid", `${w.wid}`)
-      url.pathname = normalize(url.pathname + "/app/", true)
+      url.pathname = normalize(base + "/app/", true)
       if (!window.open(url.toString(), "", `innerWidth=${w.width},innerHeight=${w.height}`)) {
         const event = new CustomEvent(Event.WindowLoadFail)
         window.dispatchEvent(event)

@@ -44,7 +44,7 @@ if (typeof document !== "undefined") {
   worker.addEventListener("error", (event) => {
     logger.error("error in shared worker", field("event", event))
   })
-  new Window(worker, options.commit === "development")
+  new Window(worker, options.commit === "development", options.base)
   bindForm()
   // TEMP: Until we can get the real ready event.
   const event = new CustomEvent(Event.IdeReady)
