@@ -13,43 +13,65 @@ import "./update.css"
 
 const options = getOptions()
 
-const bindForm = (): void => {
-  const isInput = (el: Element): el is HTMLInputElement => {
-    return !!(el as HTMLInputElement).name
-  }
-
-  document.querySelectorAll("form").forEach((form) => {
-    if (!form.classList.contains("-x11")) {
-      return
+if (typeof document !== "undefined") {
+  const bindForm = (): void => {
+    const isInput = (el: Element): el is HTMLInputElement => {
+      return !!(el as HTMLInputElement).name
     }
-    form.addEventListener("submit", (event) => {
-      event.preventDefault()
-      const values: { [key: string]: string } = {}
-      Array.from(form.elements).forEach((element) => {
-        if (isInput(element)) {
-          values[element.name] = element.value
-        }
-      })
-      fetch(normalize(`${options.base}/api/${ApiEndpoint.process}`), {
-        method: "POST",
-        body: JSON.stringify(values),
+
+    document.querySelectorAll("form").forEach((form) => {
+      if (!form.classList.contains("-x11")) {
+        return
+      }
+      form.addEventListener("submit", (event) => {
+        event.preventDefault()
+        const values: { [key: string]: string } = {}
+        Array.from(form.elements).forEach((element) => {
+          if (isInput(element)) {
+            values[element.name] = element.value
+          }
+        })
+        fetch(normalize(`${options.base}/api/${ApiEndpoint.process}`), {
+          method: "POST",
+          body: JSON.stringify(values),
+        })
       })
     })
-  })
-}
+  }
 
-if (typeof document !== "undefined") {
+  const showError = (error: Error): void => {
+    logger.error(error.message, field("stack", error.stack))
+    const notification = document.createElement("div")
+    notification.classList.add("notification", "-error")
+    const text = document.createElement("div")
+    text.className = "text"
+    text.innerText = error.message
+    notification.appendChild(text)
+    document.body.appendChild(notification)
+  }
+
   const src = (document.currentScript as HTMLScriptElement).src
   const worker = new SharedWorker(src, "x11")
   worker.addEventListener("error", (event) => {
     logger.error("error in shared worker", field("event", event))
+    window.dispatchEvent(new CustomEvent(Event.Error))
+    showError(new Error("error in shared worker"))
   })
-  new Window(worker, options.commit === "development", options.base)
+
+  const w = new Window(worker, options.base)
+  w.init(options.commit === "development")
+    .then(() => {
+      window.dispatchEvent(new CustomEvent(Event.Ready))
+    })
+    .catch((error) => {
+      window.dispatchEvent(new CustomEvent(Event.Error))
+      showError(error)
+    })
+
   bindForm()
-  // TEMP: Until we can get the real ready event.
-  const event = new CustomEvent(Event.IdeReady)
-  window.dispatchEvent(event)
 } else {
   const worker = new Worker()
-  worker.connect().catch((e) => worker.dispose(e))
+  worker.connect().catch((error) => {
+    logger.error(error.message, field("stack", error.stack))
+  })
 }

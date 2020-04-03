@@ -23,15 +23,22 @@ export interface ApplicationsResponse {
 }
 
 export enum Event {
-  IdeReady = "ide-ready",
+  /**
+   * This window is connected and ready to be viewed.
+   */
+  Ready = "ide-ready",
+  /**
+   * This window failed to connect.
+   */
+  Error = "error",
+  /**
+   * Unable to spawn a new window, probably because popups are blocked.
+   */
   WindowLoadFail = "window-load-fail",
-}
-
-export enum SessionError {
-  FailedToStart = 4000,
-  Starting = 4001,
-  InvalidState = 4002,
-  Unknown = 4003,
+  /**
+   * Spawned a new window.
+   */
+  WindowLoad = "window-load",
 }
 
 export interface SessionResponse {
@@ -59,7 +66,3 @@ export interface HealthResponse {
 }
 
 export type ServerMessage = HealthResponse
-
-export interface ReadyMessage {
-  protocol: string
-}

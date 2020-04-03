@@ -1,22 +1,22 @@
 import { field, logger, time } from "@coder/logger"
 import * as x11wasm from "@coder/x11wasm"
-import { ReadyMessage } from "../../common/api"
+import { Delay } from "../../common/delay"
 import { ApiEndpoint } from "../../common/http"
 import { normalize } from "../../common/util"
-import { decode, ReconnectingSocket } from "../socket"
 
-export class Worker {
-  private xs: Promise<x11wasm.XServer>
-  private socket?: ReconnectingSocket
-  private client?: x11wasm.XClient
+export class Worker extends Delay {
+  private readonly xs: Promise<x11wasm.XServer>
 
   public constructor() {
+    super()
+
     const start = time(500)
     logger.debug("creating server...")
     this.xs = x11wasm.createXServer("../../node_modules/@coder/x11wasm/out/index.wasm").then((xs) => {
       logger.debug("created server", field("time", start))
       return xs
     })
+
     self.addEventListener("connect", async (event) => {
       const port = (event as MessageEvent).ports[0]
       x11wasm.acceptPort(await this.xs, port)
@@ -24,99 +24,47 @@ export class Worker {
     })
   }
 
-  public connect(): Promise<void> {
-    if (this.socket) {
-      throw new Error("already connected")
-    }
+  public async connect(): Promise<void> {
+    const xs = await this.xs
 
-    // Strip out the options query variable and add the socket type.
-    const url = new URL(location.href)
-    url.searchParams.delete("options")
-    url.searchParams.set("type", "x11")
-    url.pathname = normalize(`${location.pathname}/../../../../../api${ApiEndpoint.run}`)
-    url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
-    const socket = new ReconnectingSocket(url.toString())
-    socket.binaryType = "arraybuffer"
-    this.socket = socket
+    const url = this.getSocketUrl("x11", ApiEndpoint.nxagent)
+    const ws = new WebSocket(url.toString())
+    ws.binaryType = "arraybuffer"
 
-    // Create a new client every time the socket (re)connects.
-    socket.onConnect(async () => {
-      const start = time(500)
-      logger.debug("creating client...")
+    ws.addEventListener("open", async () => {
+      logger.info("connected to nxagent")
+      this.reset()
 
-      // Wait for the ready message from the server.
-      const acceptMsg = await new Promise<ReadyMessage>((resolve) => {
-        const disposable = socket.onMessage(async (message) => {
-          disposable.dispose()
-          try {
-            const decoded = JSON.parse(decode(message))
-            if (decoded.protocol) {
-              logger.debug("server reports it is ready", field("message", decoded))
-              resolve(decoded)
-            }
-          } catch (error) {
-            // Not the ready message.
-          }
-        })
+      const cl = await x11wasm.dial(xs, {
+        nxproxy: true,
       })
 
-      const server = await this.xs
+      cl.on("data", (p) => ws.send(p))
+      cl.on("close", () => ws.close(1000))
 
-      logger.debug("creating client...", field("time", start), field("accept", acceptMsg.protocol))
-      const client = await x11wasm.dial(server, {
-        nxproxy: acceptMsg.protocol === "nx",
+      ws.addEventListener("message", (p: { data: ArrayBuffer }) => {
+        cl.write(new Uint8Array(p.data))
       })
-
-      client.on("data", (d) => {
-        socket.send(d)
-      })
-
-      client.on("close", () => {
-        logger.debug("client disconnected")
-      })
-
-      this.client = client
+      ws.addEventListener("close", () => cl.close())
     })
 
-    socket.onMessage((m) => {
-      if (this.client) {
-        this.client.write(new Uint8Array(m as ArrayBuffer))
-      } else {
-        logger.trace("discarding message (no client)")
-      }
+    ws.addEventListener("close", (event) => {
+      logger.warn("nxagent websocket reconnecting", field("event", event))
+      setTimeout(() => this.connect(), this.delay)
     })
-
-    // Close the client on disconnect. A new one will be created once the
-    // socket reconnects.
-    socket.onDisconnect((code) => {
-      logger.debug("got disconnected", field("code", code))
-      if (this.client) {
-        this.client.close()
-        this.client = undefined
-      }
-    })
-
-    // The close event is permanent so dispose everything.
-    socket.onClose((code) => {
-      logger.debug("got closed")
-      this.dispose(new Error(`socket closed with code ${code}`))
-    })
-
-    return socket.connect()
   }
 
-  public dispose(error?: Error): void {
-    if (error) {
-      logger.error(error.message)
-    }
-    this.xs.then((xs) => xs.close())
-    if (this.socket) {
-      this.socket.close()
-      this.socket = undefined
-    }
-    if (this.client) {
-      this.client.close()
-      this.client = undefined
-    }
+  /**
+   * Get the URL for connecting to a socket.
+   */
+  private getSocketUrl(type: string, endpoint: ApiEndpoint): URL {
+    // Use the current URL as a base so it works if there's a proxy that
+    // rewrites using a base path.
+    const url = new URL(location.href)
+    url.searchParams.delete("options")
+    url.searchParams.set("type", type)
+    url.pathname = normalize(`${location.pathname}/../../../../../api${endpoint}`)
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:"
+    return url
   }
 }

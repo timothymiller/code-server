@@ -83,3 +83,15 @@ canvas {
   top: 0;
   left: 0;
 }
+
+.notification {
+  left: 0;
+  position: fixed;
+  top: 0;
+}
+
+.notification.-error {
+  background-color: red;
+  color: #fff;
+  padding: 10px;
+}

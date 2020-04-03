@@ -16,9 +16,24 @@ export class HttpError extends Error {
 }
 
 export enum ApiEndpoint {
+  /**
+   * Get whitelisted applications
+   */
   applications = "/applications",
+  /**
+   * Connect to the nxagent.
+   */
+  nxagent = "/nxagent",
+  /**
+   * Spawwn and kill processes.
+   */
   process = "/process",
+  /**
+   * Get recent files and directories from VS Code.
+   */
   recent = "/recent",
-  run = "/run",
+  /**
+   * Get code-server health information.
+   */
   status = "/status",
 }

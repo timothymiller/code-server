@@ -4,7 +4,6 @@
   "version": "4.0.0",
   "scripts": {
     "clean": "ci/clean.sh",
-    "postinstall": "chmod +x ./node_modules/@coder/x11wasm/out/nxagent",
     "vscode": "ci/vscode.sh",
     "vscode:patch": "cd ./lib/vscode && git apply ../../ci/vscode.patch",
     "vscode:diff": "cd ./lib/vscode && git diff HEAD > ../../ci/vscode.patch",
@@ -53,7 +52,7 @@
   },
   "dependencies": {
     "@coder/logger": "1.1.11",
-    "@coder/x11wasm": "0.3.5",
+    "@coder/x11wasm": "0.5.1",
     "adm-zip": "^0.4.14",
     "fs-extra": "^8.1.0",
     "http-proxy": "^1.18.0",
