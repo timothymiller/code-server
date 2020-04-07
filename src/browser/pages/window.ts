@@ -36,7 +36,7 @@ export class Window {
       if (typeof this.w === "undefined") {
         throw new Error("no window found")
       }
-      return x11wasm.bindWindow(this.w, window, showFps)
+      return x11wasm.bindWindow(this.w, { window, fps: showFps })
     }
   }
 }

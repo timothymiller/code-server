@@ -1,5 +1,5 @@
 import { logger } from "@coder/logger"
-import * as nxagent from "@coder/x11wasm/out/nxagent.js"
+import * as nxagent from "@coder/x11wasm/nxagent"
 import * as WebSocket from "ws"
 import { Delay } from "../../common/delay"
 

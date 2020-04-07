@@ -12,7 +12,7 @@ export class Worker extends Delay {
 
     const start = time(500)
     logger.debug("creating server...")
-    this.xs = x11wasm.createXServer("../../node_modules/@coder/x11wasm/out/index.wasm").then((xs) => {
+    this.xs = x11wasm.createXServer("../../node_modules/@coder/x11wasm/index.wasm").then((xs) => {
       logger.debug("created server", field("time", start))
       return xs
     })
@@ -49,8 +49,9 @@ export class Worker extends Delay {
     })
 
     ws.addEventListener("close", (event) => {
-      logger.warn("nxagent websocket reconnecting", field("event", event))
-      setTimeout(() => this.connect(), this.delay)
+      const delay = this.delay
+      logger.warn("nxagent websocket reconnecting", field("event", event), field("delay", delay))
+      setTimeout(() => this.connect(), delay)
     })
   }
 

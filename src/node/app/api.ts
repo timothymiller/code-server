@@ -40,6 +40,9 @@ export class ApiHttpProvider extends HttpProvider {
     private readonly dataDir?: string,
   ) {
     super(options)
+    this.nx.ensure().catch((error) => {
+      logger.error(error.message)
+    })
   }
 
   public dispose(): void {
@@ -131,13 +134,14 @@ export class ApiHttpProvider extends HttpProvider {
    * A socket that connects to the nxagent.
    */
   private async handleNxagentSocket(request: http.IncomingMessage, socket: net.Socket, head: Buffer): Promise<void> {
+    await this.nx.ensure()
+
     const ws = await new Promise<WebSocket>((resolve) => {
       this.ws.handleUpgrade(request, socket, head, (socket) => {
         resolve(socket as WebSocket)
       })
     })
 
-    await this.nx.ensure()
     this.nx.accept(ws)
   }
 
