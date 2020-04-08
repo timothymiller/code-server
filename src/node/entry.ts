@@ -4,6 +4,7 @@ import * as path from "path"
 import { CliMessage } from "../../lib/vscode/src/vs/server/ipc"
 import { ApiHttpProvider } from "./app/api"
 import { DashboardHttpProvider } from "./app/dashboard"
+import { JupyterHttpProvider } from "./app/jupyter"
 import { LoginHttpProvider } from "./app/login"
 import { ProxyHttpProvider } from "./app/proxy"
 import { StaticHttpProvider } from "./app/static"
@@ -57,9 +58,17 @@ const main = async (args: Args): Promise<void> => {
     throw new Error("--cert-key is missing")
   }
 
+  const startDir = args._ && args._.length > 0 ? path.resolve(args._[args._.length - 1]) : undefined
   const httpServer = new HttpServer(options)
   const vscode = httpServer.registerHttpProvider("/vscode", VscodeHttpProvider, args)
-  const api = httpServer.registerHttpProvider("/api", ApiHttpProvider, httpServer, vscode, args["user-data-dir"])
+  const jupyter = httpServer.registerHttpProvider("/jupyter", JupyterHttpProvider, startDir)
+  const api = httpServer.registerHttpProvider(
+    "/api",
+    ApiHttpProvider,
+    httpServer,
+    { vscode, jupyter },
+    args["user-data-dir"],
+  )
   const update = httpServer.registerHttpProvider("/update", UpdateHttpProvider, !args["disable-updates"])
   httpServer.registerHttpProvider("/proxy", ProxyHttpProvider)
   httpServer.registerHttpProvider("/login", LoginHttpProvider)

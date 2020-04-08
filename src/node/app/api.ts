@@ -17,7 +17,8 @@ import {
 import { ApiEndpoint, HttpCode, HttpError } from "../../common/http"
 import { NxAgent } from "./nx"
 import { HttpProvider, HttpProviderOptions, HttpResponse, HttpServer, Route } from "../http"
-import { findApplications, findWhitelistedApplications, Vscode } from "./bin"
+import { findApplications, findWhitelistedApplications, Jupyter, Vscode } from "./bin"
+import { JupyterHttpProvider } from "./jupyter"
 import { VscodeHttpProvider } from "./vscode"
 
 interface VsRecents {
@@ -37,7 +38,10 @@ export class ApiHttpProvider extends HttpProvider {
   public constructor(
     options: HttpProviderOptions,
     private readonly server: HttpServer,
-    private readonly vscode: VscodeHttpProvider,
+    private readonly providers: {
+      readonly vscode: VscodeHttpProvider
+      readonly jupyter: JupyterHttpProvider
+    },
     private readonly dataDir?: string,
   ) {
     super(options)
@@ -203,9 +207,11 @@ export class ApiHttpProvider extends HttpProvider {
    */
   public async killProcess(app: Application): Promise<void> {
     if (app.path) {
-      switch (app.pid) {
+      switch (app.path) {
         case Vscode.path:
-          return this.vscode.dispose()
+          return this.providers.vscode.dispose()
+        case Jupyter.path:
+          return this.providers.jupyter.dispose()
       }
     } else if (typeof app.pid !== "undefined") {
       return process.kill(app.pid)
@@ -219,7 +225,8 @@ export class ApiHttpProvider extends HttpProvider {
   }
 
   /**
-   * Spawn a process and return the pid. Only one instance per exec is allowed.
+   * Spawn a process on the nxagent display and return the pid. Only one
+   * instance per exec is allowed.
    */
   public async spawnProcess(exec: string): Promise<number> {
     await this.nx.ensure()
