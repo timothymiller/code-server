@@ -89,9 +89,7 @@ export class VscodeHttpProvider extends HttpProvider {
   }
 
   public async handleWebSocket(route: Route, request: http.IncomingMessage, socket: net.Socket): Promise<void> {
-    if (!this.authenticated(request)) {
-      throw new Error("not authenticated")
-    }
+    this.ensureAuthenticated(request)
 
     // VS Code expects a raw socket. It will handle all the web socket frames.
     // We just need to handle the initial upgrade.

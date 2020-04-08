@@ -13,7 +13,7 @@ const getVscodeVersion = (): string => {
   }
 }
 
-export const Vscode: Application = {
+export const Vscode: Application & { path: string } = {
   categories: ["Editor"],
   icon: `data:image/png;base64,${fs
     .readFileSync(path.resolve(__dirname, "../../../lib/vscode/resources/linux/code.png"))
@@ -22,6 +22,13 @@ export const Vscode: Application = {
   name: "VS Code",
   path: "/vscode",
   version: getVscodeVersion(),
+}
+
+export const Jupyter: Application & { exec: string } = {
+  categories: ["Editor"],
+  name: "Jupyter",
+  path: "/jupyter",
+  exec: "jupyter",
 }
 
 export const findApplicationDirectories = async (): Promise<ReadonlyArray<string>> => {
@@ -152,7 +159,7 @@ export const findWhitelistedApplications = async (): Promise<ReadonlyArray<Appli
       icon: app.icon,
     }
 
-    const iconPath = path.join(__dirname, "..", "..", "..", "src", "node", "app", "icons", `${app.exec}.svg`)
+    const iconPath = path.join(__dirname, `../../../src/node/app/icons/${app.exec}.svg`)
     if (await fs.pathExists(iconPath)) {
       const icon = await fs.readFile(iconPath)
       details.icon = `data:image/svg+xml;base64,${icon.toString("base64")}`
@@ -200,8 +207,6 @@ export const findWhitelistedApplications = async (): Promise<ReadonlyArray<Appli
             break
           }
           case "eclipse":
-          case "jupyter":
-            throw new Error("TODO: get version")
           default: {
             const result = await util.promisify(cp.exec)(`${app.exec} --version | head -1`, {
               shell: process.env.SHELL,
@@ -224,7 +229,11 @@ export const findWhitelistedApplications = async (): Promise<ReadonlyArray<Appli
   }
 
   const apps: ReadonlyArray<Application> = [
+    // Web-based applications.
     Vscode,
+
+    // Hybrid (both an exec and a path, uses the proxy).
+    Jupyter,
 
     // JetBrains editors
     { name: "CLion", exec: "clion" },
