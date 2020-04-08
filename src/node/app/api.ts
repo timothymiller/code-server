@@ -32,6 +32,7 @@ type VsSettings = [string, string][]
 export class ApiHttpProvider extends HttpProvider {
   private readonly ws = new WebSocket.Server({ noServer: true })
   private readonly nx = new NxAgent()
+  private readonly processes = new Map<string, cp.ChildProcess>()
 
   public constructor(
     options: HttpProviderOptions,
@@ -173,18 +174,13 @@ export class ApiHttpProvider extends HttpProvider {
     const parsed: Application = JSON.parse(data)
 
     switch (request.method) {
-      case "DELETE":
-        if (parsed.pid) {
-          await this.killProcess(parsed.pid)
-        } else if (parsed.path) {
-          await this.killProcess(parsed.path)
-        } else {
-          throw new Error("No pid or path was provided")
-        }
+      case "DELETE": {
+        await this.killProcess(parsed)
         return {
           mime: "application/json",
           code: HttpCode.Ok,
         }
+      }
       case "POST": {
         if (!parsed.exec) {
           throw new Error("No exec was provided")
@@ -203,27 +199,33 @@ export class ApiHttpProvider extends HttpProvider {
   }
 
   /**
-   * Kill a process identified by pid or path if a web app.
+   * Kill a process identified by pid, path if a web app, or exec.
    */
-  public async killProcess(pid: number | string): Promise<void> {
-    if (typeof pid === "string") {
-      switch (pid) {
+  public async killProcess(app: Application): Promise<void> {
+    if (app.path) {
+      switch (app.pid) {
         case Vscode.path:
-          await this.vscode.dispose()
-          break
-        default:
-          throw new Error(`Process "${pid}" does not exist`)
+          return this.vscode.dispose()
       }
-    } else {
-      process.kill(pid)
+    } else if (typeof app.pid !== "undefined") {
+      return process.kill(app.pid)
+    } else if (app.exec) {
+      const proc = this.processes.get(app.exec)
+      if (proc) {
+        return proc.kill()
+      }
     }
+    throw new Error("Process does not exist")
   }
 
   /**
-   * Spawn a process and return the pid.
+   * Spawn a process and return the pid. Only one instance per exec is allowed.
    */
   public async spawnProcess(exec: string): Promise<number> {
     await this.nx.ensure()
+    if (this.processes.has(exec)) {
+      throw new HttpError(`${exec} has already been spawned`, HttpCode.BadRequest)
+    }
 
     const proc = cp.spawn(exec, {
       shell: process.env.SHELL || true,
@@ -235,8 +237,17 @@ export class ApiHttpProvider extends HttpProvider {
 
     this.nx.onExit(() => proc.kill())
 
-    proc.on("error", (error) => logger.error("process errored", field("pid", proc.pid), field("error", error)))
-    proc.on("exit", () => logger.debug("process exited", field("pid", proc.pid)))
+    this.processes.set(exec, proc)
+
+    proc.on("error", (error) => {
+      this.processes.delete(exec)
+      logger.error("process errored", field("pid", proc.pid), field("error", error))
+    })
+
+    proc.on("exit", () => {
+      this.processes.delete(exec)
+      logger.debug("process exited", field("pid", proc.pid))
+    })
 
     logger.debug("started process", field("pid", proc.pid), field("display", this.nx.display))
 
