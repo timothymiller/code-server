@@ -1,17 +1,14 @@
 import { field, logger } from "@coder/logger"
 import * as cp from "child_process"
-import * as fs from "fs-extra"
 import * as http from "http"
-import * as path from "path"
+import { normalize } from "../../common/util"
 import { HttpProvider, HttpProviderOptions, HttpResponse, Route, WsResponse } from "../http"
-import { xdgLocalDir } from "../util"
 import { Jupyter } from "./bin"
 
 export class JupyterHttpProvider extends HttpProvider {
   private jupyter?: Promise<cp.ChildProcess>
   private readonly port = "8888"
   private logger = logger.named("jupyter")
-  private configPath = path.join(xdgLocalDir, "jupyter_notebook_config.py")
 
   public constructor(options: HttpProviderOptions, private readonly startDir: string = process.cwd()) {
     super(options)
@@ -27,25 +24,6 @@ export class JupyterHttpProvider extends HttpProvider {
       jupyter.removeAllListeners()
       jupyter.kill()
       this.jupyter = undefined
-    }
-  }
-
-  private async ensureConfig(): Promise<void> {
-    if (!(await fs.pathExists(this.configPath))) {
-      await fs.writeFile(
-        this.configPath,
-        [
-          // The token is not necessary since code-server has its own authentication.
-          "c.NotebookApp.token = ''",
-          // TODO: base_url won't work if code-server itself has a base path.
-          // Potential solutions:
-          // 1. Add back a base path option to code-server.
-          // 2. Modify Jupyter to support relative paths.
-          // 3. Manually edit the base url in the Jupyter config as the user.
-          `c.NotebookApp.base_url = '${this.options.base}'`,
-          "c.NotebookApp.allow_remote_access = True",
-        ].join("\n"),
-      )
     }
   }
 
@@ -66,7 +44,13 @@ export class JupyterHttpProvider extends HttpProvider {
           "--allow-root",
           `--port=${this.port}`,
           "--ip=127.0.0.1",
-          `--config=${this.configPath}`,
+          // The token is not necessary since code-server has its own
+          // authentication.
+          "--NotebookApp.token=''",
+          // code-server uses relative paths to avoid needing to know what the
+          // base path is but Jupyter needs the base path to function correctly.
+          `--NotebookApp.base_url='${normalize((process.env.BASE_PATH || "") + this.options.base, true)}'`,
+          "--NotebookApp.allow_remote_access=True",
           this.startDir,
         ],
         {
@@ -116,8 +100,8 @@ export class JupyterHttpProvider extends HttpProvider {
     this.ensureAuthenticated(request)
     return {
       proxy: {
-        // When using a base Jupyter expects to receive the whole URL, so we
-        // don't want to do any rewriting by providing the base here.
+        // Jupyter expects to receive the entire URL (no rewriting).
+        prepend: process.env.BASE_PATH,
         port: this.port,
       },
     }
@@ -125,12 +109,11 @@ export class JupyterHttpProvider extends HttpProvider {
 
   public async handleRequest(_: Route, request: http.IncomingMessage): Promise<HttpResponse> {
     this.ensureAuthenticated(request)
-    await this.ensureConfig()
     await this.ensureSpawned()
     return {
       proxy: {
-        // When using a base Jupyter expects to receive the whole URL, so we
-        // don't want to do any rewriting by providing the base here.
+        // Jupyter expects to receive the entire URL (no rewriting).
+        prepend: process.env.BASE_PATH,
         port: this.port,
       },
     }

@@ -36,9 +36,13 @@ export type Query = { [key: string]: string | string[] | undefined }
 
 export interface ProxyOptions {
   /**
-   * A base path to strip from from the request before proxying if necessary.
+   * A path to strip from from the beginning of the request before proxying
    */
-  base?: string
+  strip?: string
+  /**
+   * A path to add to the beginning of the request before proxying.
+   */
+  prepend?: string
   /**
    * The port to proxy.
    */
@@ -797,14 +801,15 @@ export class HttpServer {
       throw new HttpError(`"${options.port}" is not a valid number`, HttpCode.BadRequest)
     }
 
-    // REVIEW: Absolute redirects need to be based on the subpath but I'm not
-    // sure how best to get this information to the `proxyRes` event handler.
-    // For now I'm sticking it on the request object which is passed through to
-    // the event.
-    ;(request as ProxyRequest).base = options.base
+    // REVIEW: Absolute redirects need to be based on the stripped path but I'm
+    // not sure how best to get this information to the `proxyRes` event
+    // handler. For now I'm sticking it on the request object which is passed
+    // through to the event.
+    ;(request as ProxyRequest).base = options.strip
 
     const isHttp = response instanceof http.ServerResponse
-    const path = options.base ? route.fullPath.replace(options.base, "") : route.fullPath
+    const base = options.strip ? route.fullPath.replace(options.strip, "") : route.fullPath
+    const path = normalize("/" + (options.prepend || "") + "/" + base, true)
     const proxyOptions: proxy.ServerOptions = {
       changeOrigin: true,
       ignorePath: true,
