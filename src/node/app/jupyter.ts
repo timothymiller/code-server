@@ -43,6 +43,7 @@ export class JupyterHttpProvider extends HttpProvider {
           "-y",
           "--allow-root",
           `--port=${this.port}`,
+          // Without this I get `Cannot assign requested address`.
           "--ip=127.0.0.1",
           // The token is not necessary since code-server has its own
           // authentication.
@@ -51,6 +52,10 @@ export class JupyterHttpProvider extends HttpProvider {
           // base path is but Jupyter needs the base path to function correctly.
           `--NotebookApp.base_url='${normalize((process.env.BASE_PATH || "") + this.options.base, true)}'`,
           "--NotebookApp.allow_remote_access=True",
+          // Without this it errors that 127.0.0.1:<jupyter port> doesn't match
+          // localhost:<code-server port>. Setting this to the server's local
+          // address doesn't seem to work, so * it is.
+          "--NotebookApp.allow_origin='*'",
           this.startDir,
         ],
         {
