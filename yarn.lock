@@ -759,10 +759,10 @@
   resolved "https://registry.yarnpkg.com/@coder/logger/-/logger-1.1.11.tgz#e6f36dba9436ae61e66e3f66787d75c768617605"
   integrity sha512-EEh1dqSU0AaqjjjMsVqumgZGbrZimKFKIb4t5E6o3FLfVUxJCReSME78Yj2N1xWUVAHMnqafDCxLostpuIotzw==
 
-"@coder/x11wasm@0.5.8":
-  version "0.5.8"
-  resolved "https://registry.yarnpkg.com/@coder/x11wasm/-/x11wasm-0.5.8.tgz#84beecf340d4455fadd2e01fbbc9ba20631c462b"
-  integrity sha512-MJDRlfNyV1Zya9bAIKROiKVRw6hxZPLErYdloY3CjVztAzxIgKJfKfF2PmrXZKedsrg0VQYOyrReziFjFElE+Q==
+"@coder/x11wasm@0.5.9":
+  version "0.5.9"
+  resolved "https://registry.yarnpkg.com/@coder/x11wasm/-/x11wasm-0.5.9.tgz#db6328380d23c5b98bd5e74dd7251be83ffe7a92"
+  integrity sha512-6Mor7hVrUjXNddBGzq8bf/3RDbjw3a9NLp4M23VUheXZF5MFE9aW+zaZ5Pmvju88Al8CRAFlTx1ljuzlTCrX2Q==
 
 "@iarna/toml@^2.2.0":
   version "2.2.3"
