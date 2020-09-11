@@ -8,7 +8,6 @@ import { SettingsProvider, UpdateSettings } from "../src/node/settings"
 import { tmpdir } from "../src/node/util"
 
 describe("update", () => {
-  return
   let version = "1.0.0"
   let spy: string[] = []
   const server = http.createServer((request: http.IncomingMessage, response: http.ServerResponse) => {
