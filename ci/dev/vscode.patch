@@ -432,19 +432,20 @@ index 2c64061da7b01aef0bfe3cec851da232ca9461c8..c0ef8faedd406c38bf9c55bbbdbbb060
  			// Do nothing. If we can't read the file we have no
  			// language pack config.
 diff --git a/src/vs/code/browser/workbench/workbench.ts b/src/vs/code/browser/workbench/workbench.ts
-index c629f7fffa1faad78e5d9907fd38aec289db0428..c266e1fb06ffc44f1ec4230ac59fd094a53b257b 100644
+index c629f7fffa1faad78e5d9907fd38aec289db0428..45d054a34c7d77e1757fb5b104a492749bd8d508 100644
 --- a/src/vs/code/browser/workbench/workbench.ts
 +++ b/src/vs/code/browser/workbench/workbench.ts
-@@ -13,6 +13,8 @@ import { isFolderToOpen, isWorkspaceToOpen } from 'vs/platform/windows/common/wi
+@@ -13,6 +13,9 @@ import { isFolderToOpen, isWorkspaceToOpen } from 'vs/platform/windows/common/wi
  import { isEqual } from 'vs/base/common/resources';
  import { isStandalone } from 'vs/base/browser/browser';
  import { localize } from 'vs/nls';
 +import { Schemas } from 'vs/base/common/network';
 +import { encodePath } from 'vs/server/node/util';
++import { WebRTCSocketFactory } from 'vs/platform/remote/browser/webrtcSocketFactory';
  
  interface ICredential {
  	service: string;
-@@ -243,12 +245,18 @@ class WorkspaceProvider implements IWorkspaceProvider {
+@@ -243,12 +246,18 @@ class WorkspaceProvider implements IWorkspaceProvider {
  
  		// Folder
  		else if (isFolderToOpen(workspace)) {
@@ -465,7 +466,7 @@ index c629f7fffa1faad78e5d9907fd38aec289db0428..c266e1fb06ffc44f1ec4230ac59fd094
  		}
  
  		// Append payload if any
-@@ -285,7 +293,22 @@ class WorkspaceProvider implements IWorkspaceProvider {
+@@ -285,7 +294,22 @@ class WorkspaceProvider implements IWorkspaceProvider {
  		throw new Error('Missing web configuration element');
  	}
  
@@ -489,7 +490,7 @@ index c629f7fffa1faad78e5d9907fd38aec289db0428..c266e1fb06ffc44f1ec4230ac59fd094
  
  	// Revive static extension locations
  	if (Array.isArray(config.staticExtensions)) {
-@@ -297,40 +320,7 @@ class WorkspaceProvider implements IWorkspaceProvider {
+@@ -297,40 +321,7 @@ class WorkspaceProvider implements IWorkspaceProvider {
  	// Find workspace to open and payload
  	let foundWorkspace = false;
  	let workspace: IWorkspace;
@@ -531,6 +532,15 @@ index c629f7fffa1faad78e5d9907fd38aec289db0428..c266e1fb06ffc44f1ec4230ac59fd094
  
  	// If no workspace is provided through the URL, check for config attribute from server
  	if (!foundWorkspace) {
+@@ -353,6 +344,7 @@ class WorkspaceProvider implements IWorkspaceProvider {
+ 		},
+ 		workspaceProvider: new WorkspaceProvider(workspace, payload),
+ 		urlCallbackProvider: new PollingURLCallbackProvider(),
+-		credentialsProvider: new LocalStorageCredentialsProvider()
++		credentialsProvider: new LocalStorageCredentialsProvider(),
++		webSocketFactory: new WebRTCSocketFactory(),
+ 	});
+ })();
 diff --git a/src/vs/platform/environment/node/argv.ts b/src/vs/platform/environment/node/argv.ts
 index 2379b626c81321afe18267c69c6903efbfa354f4..28f8971cf398b048c7d8f56df2e9dc4e32aadb6d 100644
 --- a/src/vs/platform/environment/node/argv.ts
@@ -683,6 +693,165 @@ index 3715cbb8e6ee41c3d9b5090918d243b723ae2d00..c65de8ad37e727d66da97a8f8b170cbc
 -
 -
 -
+diff --git a/src/vs/platform/remote/browser/webrtcSocketFactory.ts b/src/vs/platform/remote/browser/webrtcSocketFactory.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..ff29ddc33212f2069da62f835b3aa5724fff82f8
+--- /dev/null
++++ b/src/vs/platform/remote/browser/webrtcSocketFactory.ts
+@@ -0,0 +1,153 @@
++/*---------------------------------------------------------------------------------------------
++ *  Copyright (c) Microsoft Corporation. All rights reserved.
++ *  Licensed under the MIT License. See License.txt in the project root for license information.
++ *--------------------------------------------------------------------------------------------*/
++
++import { ISocketFactory, IConnectCallback } from 'vs/platform/remote/common/remoteAgentConnection';
++import { ISocket } from 'vs/base/parts/ipc/common/ipc.net';
++import { VSBuffer } from 'vs/base/common/buffer';
++import { IDisposable, Disposable } from 'vs/base/common/lifecycle';
++import { Event, Emitter } from 'vs/base/common/event';
++import * as dom from 'vs/base/browser/dom';
++import { RunOnceScheduler } from 'vs/base/common/async';
++import { RemoteAuthorityResolverError, RemoteAuthorityResolverErrorCode } from 'vs/platform/remote/common/remoteAuthorityResolver';
++import { IWebSocket, IWebSocketFactory } from 'vs/workbench/workbench.web.api';
++
++type WebRTCNegotiationMessage = {
++	readonly type: "sdp"
++	readonly description: RTCSessionDescriptionInit
++} | {
++	readonly type: "candidate"
++	readonly candidate: RTCIceCandidate
++}
++
++class WebRTCSocket extends Disposable implements IWebSocket {
++
++	private readonly _onData = new Emitter<ArrayBuffer>();
++	public readonly onData = this._onData.event;
++
++	public readonly _onOpen = this._register(new Emitter<void>())
++	public readonly onOpen = this._onOpen.event
++
++	public readonly _onClose = this._register(new Emitter<void>())
++	public readonly onClose = this._onClose.event
++
++	public readonly _onError = this._register(new Emitter<void>())
++	public readonly onError = this._onError.event
++
++	private readonly ws: WebSocket
++	private rtc?: RTCPeerConnection
++	private dataChannel?: RTCDataChannel
++
++	public constructor(
++		private readonly url: URL
++	) {
++		super()
++		
++		this.ws = new WebSocket(`${this.url.protocol}//${this.url.host}/webrtc`)
++		this.ws.addEventListener("open", this.onWebSocketOpen.bind(this))
++		this.ws.addEventListener("close", this.onWebSocketClose.bind(this))
++		this.ws.addEventListener("message", this.onWebSocketMessage.bind(this))
++	}
++
++	public send(data: ArrayBuffer | ArrayBufferView): void {
++		if (!this.dataChannel) {
++			throw new Error("dev: shouldn't have happened")
++		}
++
++		this.dataChannel.send(data as ArrayBuffer)
++	}
++
++	public close(): void {
++		throw new Error('Method not implemented.');
++	}
++
++	private onDataChannelMessage(event: MessageEvent): void {
++		this._onData.fire(event.data)
++	}
++
++	private onDataChannelOpen(): void {
++		setTimeout(() => {
++			this.dataChannel?.send(this.url.search)
++
++			setTimeout(() => {
++				this._onOpen.fire()
++				console.log("maxMsg", this.rtc?.sctp?.maxMessageSize)
++			}, 1000)
++		}, 200)
++
++	}
++
++	private onDataChannelClose(): void {
++		this._onClose.fire()
++	}
++
++	private onRTCIceCandidate(event: RTCPeerConnectionIceEvent): void {
++		if (!event.candidate) {
++			return
++		}
++		this.ws.send(JSON.stringify(event.candidate))
++	}
++
++	private onRTCConnectionStateChange() {
++        console.log("RTC connection state changed:", this.rtc!.connectionState)
++    }
++
++	private onWebSocketOpen(): void {
++		this.rtc = new RTCPeerConnection({
++			iceServers: [{
++				urls: ["stun:stun.services.mozilla.com"],
++			}, {
++				urls: ["stun:stun.l.google.com:19302"],
++			}],
++		})
++		this.rtc.addEventListener("icecandidate", this.onRTCIceCandidate.bind(this))
++		this.rtc.addEventListener("connectionstatechange", this.onRTCConnectionStateChange.bind(this))
++		this.dataChannel = this.rtc.createDataChannel("vscode", {
++			ordered: true,
++			maxRetransmits: 200,
++		})
++		this.dataChannel.addEventListener("open", this.onDataChannelOpen.bind(this))
++		this.dataChannel.addEventListener("message", this.onDataChannelMessage.bind(this))
++		this.dataChannel.addEventListener("close", this.onDataChannelClose.bind(this))
++		;(async () => {
++			if (!this.rtc) {
++				throw new Error("rtc not available")
++			}
++			const offer = await this.rtc.createOffer()
++			await this.rtc.setLocalDescription(offer)
++			this.ws.send(JSON.stringify(offer))
++		})().catch((ex) => {
++			console.error("negotating webrtc:", ex)
++			this._onError.fire()
++		})
++	}
++
++	private onWebSocketMessage(event: MessageEvent): void {
++		(async () => {
++			const msg = JSON.parse(event.data) as RTCSessionDescriptionInit | RTCIceCandidate
++			if ("sdp" in msg) {
++				// Handle SDP.
++				await this.rtc?.setRemoteDescription(msg)
++            } else if ("candidate" in msg) {
++				// Handle ice candidate.
++				await this.rtc?.addIceCandidate(msg)
++            } else {
++                throw new Error("invalid msg: " + JSON.stringify(msg))
++            }
++		})().catch((ex) => {
++			console.error("ws msg:", ex)
++			this._onError.fire()
++		})
++	}
++
++	private onWebSocketClose(): void {
++
++	}
++}
++
++export class WebRTCSocketFactory implements IWebSocketFactory {
++	create(url: string): IWebSocket {
++		return new WebRTCSocket(new URL(url))
++	}
++}
 diff --git a/src/vs/platform/remote/common/remoteAgentConnection.ts b/src/vs/platform/remote/common/remoteAgentConnection.ts
 index 2185bb5228c3f9603f307237e7f146fe386708d8..35463ca6520a7da2308d01a51ef2d3e544f10a10 100644
 --- a/src/vs/platform/remote/common/remoteAgentConnection.ts

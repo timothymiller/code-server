@@ -571,6 +571,7 @@ export class HttpServer {
         }
       }
     })
+    return p
   }
 
   /**

@@ -15,6 +15,7 @@ import { Args, bindAddrFromAllSources, optionDescriptions, parse, readConfigFile
 import { AuthType, HttpServer, HttpServerOptions } from "./http"
 import { loadPlugins } from "./plugin"
 import { generateCertificate, hash, humanPath, open } from "./util"
+import { WebRTCHttpProvider } from "./app/webrtc"
 import { ipcMain, wrap } from "./wrapper"
 
 process.on("uncaughtException", (error) => {
@@ -76,12 +77,13 @@ const main = async (args: Args, cliArgs: Args, configArgs: Args): Promise<void> 
   }
 
   const httpServer = new HttpServer(options)
-  httpServer.registerHttpProvider(["/", "/vscode"], VscodeHttpProvider, args)
+  const vscode = httpServer.registerHttpProvider(["/", "/vscode"], VscodeHttpProvider, args)
   httpServer.registerHttpProvider("/update", UpdateHttpProvider, false)
   httpServer.registerHttpProvider("/proxy", ProxyHttpProvider)
   httpServer.registerHttpProvider("/login", LoginHttpProvider, args.config!, envPassword)
   httpServer.registerHttpProvider("/static", StaticHttpProvider)
   httpServer.registerHttpProvider("/healthz", HealthHttpProvider, httpServer.heart)
+  httpServer.registerHttpProvider("/webrtc", WebRTCHttpProvider, vscode)
 
   await loadPlugins(httpServer, args)
 

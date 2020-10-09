@@ -112,15 +112,19 @@ export class VscodeHttpProvider extends HttpProvider {
       ].join("\r\n") + "\r\n\r\n",
     )
 
+    await this.connect({ type: "socket", query: route.query }, socket)
+  }
+
+  public async connect(message: CodeServerMessage, socket: net.Socket): Promise<void> {
     const vscode = await this._vscode
-    this.send({ type: "socket", query: route.query }, vscode, socket)
+    this.send(message, vscode, socket)
   }
 
   private send(message: CodeServerMessage, vscode?: cp.ChildProcess, socket?: net.Socket): void {
     if (!vscode || vscode.killed) {
       throw new Error("vscode is not running")
     }
-    vscode.send(message, socket)
+    vscode.send(message, socket, { keepOpen: true })
   }
 
   public async handleRequest(route: Route, request: http.IncomingMessage): Promise<HttpResponse> {
