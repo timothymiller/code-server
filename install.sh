@@ -202,6 +202,10 @@ main() {
     exit 1
   fi
 
+  if ! should_update; then
+    return 0
+  fi
+
   distro_name
 
   ARCH="$(arch)"
@@ -488,6 +492,21 @@ arch() {
     echo amd64
     ;;
   esac
+}
+
+should_update() {
+  if ! command_exists code-server; then
+    return 0
+  fi
+
+  installed_version="$(code-server --version | cut -d " " -f1)"
+  if [ "$installed_version" != "$VERSION" ]; then
+    echo "updating as installed version v$installed_version does not match version v$VERSION"
+    return 0
+  fi
+
+  echo "already on version v$VERSION"
+  return 1
 }
 
 command_exists() {
