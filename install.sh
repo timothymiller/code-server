@@ -45,6 +45,11 @@ Usage:
       and the binary symlinked into ~/.local/bin/code-server
       To install system wide pass ---prefix=/usr/local
 
+  --start
+      Starts code-server after installation. If installing remotely and
+      the remote shell is ssh, then the remote port code-server is running
+      on is also forwarded locally for easy access.
+
   --rsh <bin>
       Specifies the remote shell for remote installation. Defaults to ssh.
 
