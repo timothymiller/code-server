@@ -32,7 +32,7 @@ index f2ea1bd37010b1eb8a43ce9beaae4a88810f6e2d..3f660f9981921ec465d2b8809a1a5ea5
  	const target = /^target "(.*)"$/m.exec(yarnrc)[1];
  	return target;
 diff --git a/build/lib/extensions.js b/build/lib/extensions.js
-index 9cc40c4e1befd38886dc5880581d6f462a38dd3a..34e1fc89a8ac1c273a5cb41f19a088a8ec759d24 100644
+index fe0deffc6d0c157c2c977753ff1bb96f081a7c2a..82e7ab9025c16882a50c13ead793e18f9e1a1737 100644
 --- a/build/lib/extensions.js
 +++ b/build/lib/extensions.js
 @@ -66,7 +66,7 @@ function fromLocal(extensionPath, forWeb) {
@@ -45,7 +45,7 @@ index 9cc40c4e1befd38886dc5880581d6f462a38dd3a..34e1fc89a8ac1c273a5cb41f19a088a8
              if (data.main) {
                  data.main = data.main.replace('/out/', /dist/);
 diff --git a/build/lib/extensions.ts b/build/lib/extensions.ts
-index 7e529f17cb84d28d84de4ff64fa9fb8fc48135a9..462d699dc485369c74a4d9fdfefa48ba6124ac3a 100644
+index dac71c814798ecfac99750be856078e043d239bf..6edd7ea56baef7cd9f87a9020df32d3b8519b615 100644
 --- a/build/lib/extensions.ts
 +++ b/build/lib/extensions.ts
 @@ -70,7 +70,7 @@ function fromLocal(extensionPath: string, forWeb: boolean): Stream {
@@ -2481,10 +2481,10 @@ index 0000000000000000000000000000000000000000..3d428a57d31f29c40f9c3ce45f715b44
 +};
 diff --git a/src/vs/server/node/protocol.ts b/src/vs/server/node/protocol.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..3c74512192aec6220216bc8563b3127b9cfd5fbf
+index 0000000000000000000000000000000000000000..71754c39fc7e28122f432ce8e8f1a4b5d5c1a1a5
 --- /dev/null
 +++ b/src/vs/server/node/protocol.ts
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,77 @@
 +import * as net from 'net';
 +import { VSBuffer } from 'vs/base/common/buffer';
 +import { PersistentProtocol } from 'vs/base/parts/ipc/common/ipc.net';
@@ -2533,13 +2533,17 @@ index 0000000000000000000000000000000000000000..3c74512192aec6220216bc8563b3127b
 +					reject(error);
 +				}
 +			});
++
++			// Kick off the handshake in case we missed the client's opening shot.
++			// TODO: Investigate why that message seems to get lost.
++			this.authenticate();
 +		});
 +	}
 +
 +	/**
 +	 * TODO: This ignores the authentication process entirely for now.
 +	 */
-+	private authenticate(_message: AuthRequest): void {
++	private authenticate(_?: AuthRequest): void {
 +		this.sendMessage({ type: 'sign', data: '' });
 +	}
 +
